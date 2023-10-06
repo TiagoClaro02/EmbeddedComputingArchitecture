@@ -103,11 +103,11 @@ void loop()
         }
 
         // Calculate next state for the second state machine
-        /*if (fsm2.state == 0 && S2 && !prevS2){
+        if (fsm2.state == 0 && S2 && !prevS2){
             fsm2.new_state = 1;
         } else if (fsm2.state == 1 && S2 && !prevS2){
             fsm2.new_state = 0;
-        }*/
+        }
 
         // Update the states
         set_state(fsm1, fsm1.new_state);
@@ -120,6 +120,14 @@ void loop()
             LED_1 = 1;
         } else if (fsm1.state == 2){
             LED_1 = 0;
+        }
+
+        if (fsm2.state == 0){
+            LED_2 = 0;
+        } else if (fsm2.state == 1){
+            LED_2 = 1;
+        } else if (fsm2.state == 2){
+            LED_2 = 0;
         }
 
         // A more compact way
