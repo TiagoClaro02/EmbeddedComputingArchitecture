@@ -3,7 +3,6 @@
 
 #define NUM_LEDS 15
 #define LED_PIN 6
-#define LED_TIME 500
 #define LED_BLINK_TIME 500
 #define LED_BLINK_PAUSE 850
 #define HOLD_TIME 3000
@@ -12,6 +11,7 @@
 #define BLINK_TIME_5 5000
 #define BLINK_TIME_10 10000
 
+#define BRIGHTNESS  255
 
 #define Sgo 2
 #define Sup 3
@@ -41,7 +41,9 @@ typedef enum{
     CONFIG_HIGH_3,
     CONFIG_LOW_3,
     SETUP_IDLE,
-    SETUP_HIGH,
+    SETUP_HIGH_1,
+    SETUP_HIGH_2,
+    SETUP_HIGH_3,
 } state_t;
 
 // Finite State Machine
@@ -68,6 +70,9 @@ bool Sdown_pressed = false;
 bool Sup_hold = false;
 bool Sup_hold_old = false;
 
+int blinkMotion = 0;
+int fadeMotion = 0;
+
 bool flag;
 
 int low_leds = 0;
@@ -75,6 +80,7 @@ int countdown = 0;
 int aux = 0;
 int low_leds_old = 0;
 unsigned long hold = 0, start_hold = 0, blink_old = 0;
+int transition = 2;
 
 int blink_time = BLINK_TIME_10;
 
@@ -331,37 +337,38 @@ void update_countdown_outputs()
     
     case COUNTDOWN_START:
 
-        Serial.println(low_leds);
+        if(transition == 0){
 
-        if(flag){
-            countdown_fsm.aux = countdown_fsm.tis + low_leds_old*LED_TIME;
-        }
-        else{
-            countdown_fsm.aux = countdown_fsm.tis;
-        }
+            if(flag){
+                countdown_fsm.aux = countdown_fsm.tis + low_leds_old*blink_time;
+            }
+            else{
+                countdown_fsm.aux = countdown_fsm.tis;
+            }
 
-        countdown_fsm.interval = countdown_fsm.aux - LED_TIME*low_leds - aux*LED_TIME;
+            countdown_fsm.interval = countdown_fsm.aux - blink_time*low_leds - aux*blink_time;
 
-        for(int i=0; i < low_leds; i++)
-        {
-            leds[i] = CRGB::Black;
-        }
-        for(int i=low_leds; i < NUM_LEDS; i++)
-        {
-            leds[i] = CRGB::White;
-        }
-        FastLED.show();
+            for(int i=0; i < low_leds; i++)
+            {
+                leds[i] = CRGB::Black;
+            }
+            for(int i=low_leds; i < NUM_LEDS; i++)
+            {
+                leds[i] = CRGB::White;
+            }
+            FastLED.show();
 
-        if(Sup_pressed && low_leds < NUM_LEDS && low_leds > 0){
-            low_leds--;
-            aux++;
-            break;
-        }
+            if(Sup_pressed && low_leds < NUM_LEDS && low_leds > 0){
+                low_leds--;
+                aux++;
+                break;
+            }
 
-        if(countdown_fsm.interval >= LED_TIME){
-            low_leds++;
+            if(countdown_fsm.interval >= blink_time){
+                low_leds++;
+            }
         }
-
+        
         break;
 
     case COUNTDOWN_PAUSE:
@@ -575,6 +582,18 @@ void update_config_fsm()
             set_state(config_fsm, CONFIG_HIGH_3);
             Serial.println("CONFIG_HIGH_3");
         }
+        if(Sdown_pressed)
+        {
+            if(transition == 0){
+                transition = 1;
+            }
+            else if(transition == 1){
+                transition = 2;
+            }
+            else if(transition == 2){
+                transition = 0;
+            }
+        }
         break;
 
     case CONFIG_LOW_2:
@@ -592,6 +611,18 @@ void update_config_fsm()
         {
             set_state(config_fsm, CONFIG_HIGH_3);
             Serial.println("CONFIG_HIGH_3");
+        }
+        if(Sdown_pressed)
+        {
+            if(transition == 0){
+                transition = 1;
+            }
+            else if(transition == 1){
+                transition = 2;
+            }
+            else if(transition == 2){
+                transition = 0;
+            }
         }
         break;
 
@@ -725,15 +756,39 @@ void update_setup_fsm()
     case SETUP_IDLE:
         if((config_fsm.state == CONFIG_HIGH_1 || config_fsm.state == CONFIG_LOW_1) && Sdown_pressed)
         {
-            set_state(setup_fsm, SETUP_HIGH);
+            set_state(setup_fsm, SETUP_HIGH_1);
+            blink_old = millis();
+            Serial.println("SETUP_HIGH");
+        }
+        if((config_fsm.state == CONFIG_HIGH_2 || config_fsm.state == CONFIG_LOW_2) && Sdown_pressed)
+        {
+            set_state(setup_fsm, SETUP_HIGH_2);
             blink_old = millis();
             Serial.println("SETUP_HIGH");
         }
         break;
     
-    case SETUP_HIGH:
+    case SETUP_HIGH_1:
 
         
+        if((millis() - blink_old) >= blink_time){
+            set_state(setup_fsm, SETUP_IDLE);
+            Serial.println("SETUP_IDLE");
+        }
+
+        break;
+
+    case SETUP_HIGH_2:
+
+        if((millis() - blink_old) >= blink_time){
+            set_state(setup_fsm, SETUP_IDLE);
+            Serial.println("SETUP_IDLE");
+        }
+
+        break;
+
+    case SETUP_HIGH_3:
+
         if((millis() - blink_old) >= blink_time){
             set_state(setup_fsm, SETUP_IDLE);
             Serial.println("SETUP_IDLE");
@@ -755,10 +810,48 @@ void update_setup_outputs()
 
         break;
     
-    case SETUP_HIGH:
+    case SETUP_HIGH_1:
 
         leds[NUM_LEDS-1] = CRGB::White;
         FastLED.show();
+
+        break;
+    case SETUP_HIGH_2:
+
+        if(transition == 0){
+            leds[NUM_LEDS-1] = CRGB::White;
+            FastLED.show(); 
+        }
+        if(transition == 1){
+            leds[NUM_LEDS-1] = CRGB::White;
+
+            if((millis() - blink_old) >= blink_time/2){
+            
+                if(blinkMotion>=50){
+                    blinkMotion = 0;
+                }
+
+                if(blinkMotion<25){
+                    leds[NUM_LEDS-1] = CRGB::Black;
+                    blinkMotion++;
+                }
+                else if(blinkMotion<50){
+                    leds[NUM_LEDS-1] = CRGB::White;
+                    blinkMotion++;
+                }
+            }
+            FastLED.show(); 
+        }
+        if(transition == 2){
+            leds[NUM_LEDS-1] = CRGB::White;
+            fadeMotion = map((millis() - blink_old), 0, blink_time, BRIGHTNESS, 0);
+            leds[NUM_LEDS-1].setHSV(0, 0, fadeMotion);
+            
+            FastLED.show();
+        }
+        break;
+
+    case SETUP_HIGH_3:
 
         break;
     }
@@ -777,7 +870,7 @@ void setup()
     digitalWrite(LED_BUILTIN, HIGH);
 
     FastLED.addLeds<NEOPIXEL, LED_PIN>(leds, NUM_LEDS);
-    FastLED.setBrightness(10);
+    FastLED.setBrightness(BRIGHTNESS);
 
     // Start the serial port with 115200 baudrate
     Serial.begin(115200);
