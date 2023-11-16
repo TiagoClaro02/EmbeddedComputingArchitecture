@@ -14,7 +14,7 @@ The software used in this project is the Arduino Framework using PlatformIO exte
 
 ### Hardware
 
-The hardware setup is very simple. The LED strip is connected to the Raspberry Pi Pico board as follows:
+The hardware setup is very simple. The LED strip and buttons are connected to the Raspberry Pi Pico board as follows:
 
 ![Schematic of connections](/Lab1/Schematic_ACE_lab1_2023-11-08.png "Schematic of connections")
 
